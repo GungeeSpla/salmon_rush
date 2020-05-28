@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8"/>
+    <title>ラッシュ乱獲シミュレーション</title>
+		<meta name="description" content="サーモンランの『ラッシュ』イベントの乱獲をシミュレーションしてみます。" />
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <script src="./assets/js/libs/easeljs-1.0.0-NEXT.min.js"></script>
+    <script id="app" type="module" src="./assets/js/index.min.js?0.0.0"></script>
+  </head>
+  <body>
+    <style>
+      canvas {
+        z-index: 0;
+        display: block;
+        position: absolute;
+      }
+      body {
+        font-size: 1em;
+        color: #444;
+      }
+      hr {
+        border-top: 1px solid #444;
+        border-top: 1px solid #AAA;
+      }
+      button {
+        font-size: 1em;
+      }
+      input[type=text] {
+        font-size: 1em;
+        width: 3em;
+        text-align: center;
+      }
+      input[type=checkbox],
+      input[type=radio] {
+      	cursor: pointer;
+      }
+      label {
+        cursor: pointer;
+      }
+      .width-4em {
+        display: inline-block;
+        width: 4em;
+        text-align: center;
+      }
+      label:hover,
+      label:hover span {
+        text-decoration: underline;
+      }
+      input[type=radio]:checked + label,
+      input[type=checkbox]:checked + label {
+        font-weight: bold;
+      }
+      .number-input.error {
+        background: pink;
+      }
+      .mabiki-select,
+      .mabiki-table td {
+        color: #FFF;
+        width: 2em;
+        height: 2em;
+        text-align: center;
+        vertical-align: middle;
+        border: 1px solid #444;
+      }
+      .mabiki-select {
+        width: 2em;
+        height: auto;
+        display: inline-block;
+      }
+      .mabiki-table {
+        border-collapse: separate;
+        border-spacing: 0.5em;
+      }
+      .mabiki-table td {
+        cursor: pointer;
+      }
+      .checkbox-content {
+      	padding-left: 20px;
+      }
+      #info-area {
+      	padding: 5px;
+        position: absolute;
+      	font-size: 15px;
+      }
+      #info-aki-or-manseki {
+      	position: relative;
+      	display: none;
+      }
+      #info-aki,
+      #info-manseki {
+      	display: inline-block;
+      	width: 40px;
+      	text-align: center;
+      	position: absolute;
+      }
+      #info-aki {
+      	background: #03A9F4;
+      	color: #FFFFFF;
+      }
+      #info-manseki {
+      	background: #CC2200;
+      	color: #FFFFFF;
+      }
+    </style>
+    <div id="canvas-wrapper">
+	    <canvas id="createjs-canvas"></canvas>
+	    <div id="info-area">
+		    残り時間 <span id="info-left-seconds"></span><br>
+		    納品した金イクラ数 <span id="info-golden-egg-counts"></span><br>
+		    出現した金イクラ数 <span id="info-pop-golden-egg-counts"></span><br>
+		    現存するシャケ数 <span id="info-salmonid-counts"></span><br>
+		    出現したシャケ数 <span id="info-pop-salmonid-counts"></span><br>
+		    ロストしたシャケ数 <span id="info-lost-salmonid-counts"></span><br>
+		    <span id="info-aki-or-manseki"><span id="info-aki">空</span><span id="info-manseki">満</span></span>
+	    </div>
+	  </div>
+    <p>
+      <button id="start-button" class="ope-button">開始</button>
+      <button id="pause-button" class="ope-button">一時停止</button>
+      <button id="stop-button" class="ope-button">停止</button>
+    </p>
+    <hr>
+    <p><input type="checkbox" class="checkbox-input" id="auto-ikura-pickup-checkbox" /><label for="auto-ikura-pickup-checkbox">金イクラを自動的に回収する</label></p>
+    <div id="auto-ikura-pickup-checkbox-content" class="checkbox-content">
+    金イクラ出現から<input type="text" class="number-input" id="ikura-pickup-seconds-input" value="4"/>±<input type="text" class="number-input" id="ikura-pickup-seconds-width-input" value="8"/>秒後に。（ただし最短でも1秒）</p>
+    </div>
+    <hr>
+    <p><input type="checkbox" class="checkbox-input" id="auto-mabiki-checkbox" /><label for="auto-mabiki-checkbox">シャケを自動的に間引く</label></p>
+    <div id="auto-mabiki-checkbox-content" class="checkbox-content">
+	    <p><input type="checkbox" class="checkbox-input" id="auto-mabiki-shomen-checkbox" /><label for="auto-mabiki-shomen-checkbox">正面湧きのシャケを自動的に間引く</label>（<input type="text" class="number-input" id="mabiki-shomen-ratio-input" value="80"/>%のシャケを、出現から<input type="text" class="number-input" id="mabiki-shomen-speed-input" value="3"/>秒後に）</p>
+	    <p><input type="checkbox" class="checkbox-input" id="auto-mabiki-migi-checkbox" /><label for="auto-mabiki-migi-checkbox">右湧きのシャケを自動的に間引く</label>（<input type="text" class="number-input" id="mabiki-migi-ratio-input" value="80"/>%のシャケを、出現から<input type="text" class="number-input" id="mabiki-migi-speed-input" value="3"/>秒後に）</p>
+	    <p><input type="checkbox" class="checkbox-input" id="auto-mabiki-ura-checkbox" /><label for="auto-mabiki-ura-checkbox">裏湧きのシャケを自動的に間引く</label>（<input type="text" class="number-input" id="mabiki-ura-ratio-input" value="80"/>%のシャケを、出現から<input type="text" class="number-input" id="mabiki-ura-speed-input" value="3"/>秒後に）</p>
+    </div>
+    <hr>
+    <p><input type="checkbox" class="checkbox-input" id="mabiki-cell-checkbox" /><label for="mabiki-cell-checkbox">間引きマスを設置する</label></p>
+    <div id="mabiki-cell-checkbox-content" class="checkbox-content">
+    	<p>
+	      以下のブロック内の数字は「そのマスでシャケを間引く割合」を示しています。<br>
+	      設置したい割合をクリックで選択して、マップ上に間引きマスを配置してください。<br>
+	      選択中：<span class="mabiki-select">0</span>　<button id="mabiki-reset-button" class="ope-button">間引きマスをリセット</button>
+	    </p>
+      <table class="mabiki-table"><tr>
+        <td class="mabiki-100">100</td>
+        <td class="mabiki-90">90</td>
+        <td class="mabiki-80">80</td>
+        <td class="mabiki-70">70</td>
+        <td class="mabiki-60">60</td>
+        <td class="mabiki-50">50</td>
+        <td class="mabiki-40">40</td>
+        <td class="mabiki-30">30</td>
+        <td class="mabiki-20">20</td>
+        <td class="mabiki-10">10</td>
+        <td class="mabiki-0">0</td>
+      </tr></table>
+    </div>
+    <hr>
+    <p><input type="checkbox" class="checkbox-input" id="spawn-dir-checkbox" /><label for="spawn-dir-checkbox">湧き方角を指定する</label></p>
+    <div id="spawn-dir-checkbox-content" class="checkbox-content">
+    	<table class="spawn-dir-table" id="spawn-dir-table">
+    		<tr><td width="100">一括変更</td>
+    		  <td width="80"><input type="radio" name="spawn-dir-0" value="shomen" id="sd-0-a"><label for="sd-0-a">正面</label></td>
+    		  <td width="80"><input type="radio" name="spawn-dir-0" value="migi" id="sd-0-b"><label for="sd-0-b">右</label></td>
+    		  <td width="80"><input type="radio" name="spawn-dir-0" value="ura" id="sd-0-c"><label for="sd-0-c">裏</label></td>
+    		</td></tr>
+    		<tr><td>100-90</td>
+    		  <td><input type="radio" name="spawn-dir-1" value="shomen" id="sd-1-a" checked="checked"><label for="sd-1-a">正面</label></td>
+    		  <td><input type="radio" name="spawn-dir-1" value="migi" id="sd-1-b"><label for="sd-1-b">右</label></td>
+    		  <td><input type="radio" name="spawn-dir-1" value="ura" id="sd-1-c"><label for="sd-1-c">裏</label></td>
+    		</td></tr>
+    		<tr><td>90-80</td>
+    		  <td><input type="radio" name="spawn-dir-2" value="shomen" id="sd-2-a" checked="checked"><label for="sd-2-a">正面</label></td>
+    		  <td><input type="radio" name="spawn-dir-2" value="migi" id="sd-2-b"><label for="sd-2-b">右</label></td>
+    		  <td><input type="radio" name="spawn-dir-2" value="ura" id="sd-2-c"><label for="sd-2-c">裏</label></td>
+    		</td></tr>
+    		<tr><td>80-70</td>
+    		  <td><input type="radio" name="spawn-dir-3" value="shomen" id="sd-3-a" checked="checked"><label for="sd-3-a">正面</label></td>
+    		  <td><input type="radio" name="spawn-dir-3" value="migi" id="sd-3-b"><label for="sd-3-b">右</label></td>
+    		  <td><input type="radio" name="spawn-dir-3" value="ura" id="sd-3-c"><label for="sd-3-c">裏</label></td>
+    		</td></tr>
+    		<tr><td>70-59</td>
+    		  <td><input type="radio" name="spawn-dir-4" value="shomen" id="sd-4-a" checked="checked"><label for="sd-4-a">正面</label></td>
+    		  <td><input type="radio" name="spawn-dir-4" value="migi" id="sd-4-b"><label for="sd-4-b">右</label></td>
+    		  <td><input type="radio" name="spawn-dir-4" value="ura" id="sd-4-c"><label for="sd-4-c">裏</label></td>
+    		</td></tr>
+    		<tr><td>59-49</td>
+    		  <td><input type="radio" name="spawn-dir-5" value="shomen" id="sd-5-a" checked="checked"><label for="sd-5-a">正面</label></td>
+    		  <td><input type="radio" name="spawn-dir-5" value="migi" id="sd-5-b"><label for="sd-5-b">右</label></td>
+    		  <td><input type="radio" name="spawn-dir-5" value="ura" id="sd-5-c"><label for="sd-5-c">裏</label></td>
+    		</td></tr>
+    		<tr><td>49-39</td>
+    		  <td><input type="radio" name="spawn-dir-6" value="shomen" id="sd-6-a" checked="checked"><label for="sd-6-a">正面</label></td>
+    		  <td><input type="radio" name="spawn-dir-6" value="migi" id="sd-6-b"><label for="sd-6-b">右</label></td>
+    		  <td><input type="radio" name="spawn-dir-6" value="ura" id="sd-6-c"><label for="sd-6-c">裏</label></td>
+    		</td></tr>
+    		<tr><td>39-28</td>
+    		  <td><input type="radio" name="spawn-dir-7" value="shomen" id="sd-7-a" checked="checked"><label for="sd-7-a">正面</label></td>
+    		  <td><input type="radio" name="spawn-dir-7" value="migi" id="sd-7-b"><label for="sd-7-b">右</label></td>
+    		  <td><input type="radio" name="spawn-dir-7" value="ura" id="sd-7-c"><label for="sd-7-c">裏</label></td>
+    		</td></tr>
+    		<tr><td>28-18</td>
+    		  <td><input type="radio" name="spawn-dir-8" value="shomen" id="sd-8-a" checked="checked"><label for="sd-8-a">正面</label></td>
+    		  <td><input type="radio" name="spawn-dir-8" value="migi" id="sd-8-b"><label for="sd-8-b">右</label></td>
+    		  <td><input type="radio" name="spawn-dir-8" value="ura" id="sd-8-c"><label for="sd-8-c">裏</label></td>
+    		</td></tr>
+    		<tr><td>18-8</td>
+    		  <td><input type="radio" name="spawn-dir-9" value="shomen" id="sd-9-a" checked="checked"><label for="sd-9-a">正面</label></td>
+    		  <td><input type="radio" name="spawn-dir-9" value="migi" id="sd-9-b"><label for="sd-9-b">右</label></td>
+    		  <td><input type="radio" name="spawn-dir-9" value="ura" id="sd-9-c"><label for="sd-9-c">裏</label></td>
+    		</td></tr>
+    		<tr><td>8-0</td>
+    		  <td><input type="radio" name="spawn-dir-10" value="shomen" id="sd-10-a" checked="checked"><label for="sd-10-a">正面</label></td>
+    		  <td><input type="radio" name="spawn-dir-10" value="migi" id="sd-10-b"><label for="sd-10-b">右</label></td>
+    		  <td><input type="radio" name="spawn-dir-10" value="ura" id="sd-10-c"><label for="sd-10-c">裏</label></td>
+    		</td></tr>
+    	</table>
+    </div>
+    <hr>
+    <p><input type="checkbox" class="checkbox-input" id="seed-fix-checkbox" /><label for="seed-fix-checkbox">疑似乱数のシードを指定する</label></p>
+    <div id="seed-fix-checkbox-content" class="checkbox-content">
+    	シードを<input type="text" class="number-input" id="seed-fix-input" max="-1" value="999"/>に固定します。
+    </div>
+    <hr>
+    <hr>
+  </body>
+</html>
